@@ -71,13 +71,13 @@ def get_read_out_and_convert_to_json():
     readout = bmp280_spi.measurements
     temperature = readout['t']
     pressure = readout['p']
-    return f'{{"temperature":{temperature}, "temperature-unit":"°C", "pressure":{pressure}, "pressure-unit":"hPa."}}'
+    return f'bmp280_temperature{{unit="°C"}} {temperature}\nbmp280_pressure{{unit="hPa."}} {pressure}\n'
 
 def http_request_response(cl, now, last_fetch, cache_ttl, http_body):
     request = cl.recv(1024)
     request = str(request)
     last_update = last_fetch
-    ok_http_header = 'HTTP/1.1 200 OK\r\nContent-type: application/json; charset=utf-8\r\n\r\n'
+    ok_http_header = 'HTTP/1.1 200 OK\r\nContent-type: text/plain; version=0.0.4; charset=utf-8\r\n\r\n'
     not_found_http_header = 'HTTP/1.1 404 Not Found\r\nContent-type: application/json; charset=utf-8\r\n\r\n'
     
     try:
@@ -85,7 +85,8 @@ def http_request_response(cl, now, last_fetch, cache_ttl, http_body):
     except IndexError:
         cl.close()
                 
-    if request == '/':
+    if request == '/' or request == '/metrics':
+        print('request 200:', request)
         if (now - last_update) > cache_ttl:                            
             http_body = get_read_out_and_convert_to_json()
             last_update = now
@@ -94,7 +95,7 @@ def http_request_response(cl, now, last_fetch, cache_ttl, http_body):
             print('cached last_update was:', last_update)
         send_http_header_and_body_and_close(cl, ok_http_header, http_body)
     else:
-        print('404')
+        print('request 404:', request)
         send_http_header_and_body_and_close(cl, not_found_http_header, '{}')
     return (http_body, last_update)
 
