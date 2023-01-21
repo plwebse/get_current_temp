@@ -21,7 +21,8 @@ wlan = None
 server_socket = None
 ip_addr = None
 
-def connect_to_wlan(secret):
+def connect_to_wlan():
+    global wlan
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     wlan.connect(secret.ssid, secret.password)
@@ -41,30 +42,29 @@ def connect_to_wlan(secret):
     print('connected to:', secret.ssid)
     status = wlan.ifconfig()
     print('ip = ' + status[0] )
-    return wlan
 
-def create_socket(s):
+def create_socket():
+    global server_socket
     ip_addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
-    print('create socket: ', ip_addr)
-    print('socket: ', s)
-
-    while s is None:
-        utime.sleep(1)            
+    print('create socket: ', ip_addr)   
+    while server_socket is None:
+        print('socket: ', server_socket)    
+        utime.sleep(1)
         try:
-            s = socket.socket()
-            s.settimeout(1.0)
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind(ip_addr)
-            s.listen(1)
-            print('socket_created:', s)
+            server_socket = socket.socket()
+            server_socket.settimeout(1.0)
+            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server_socket.bind(ip_addr)
+            server_socket.listen(1)
+            print('socket_created:', server_socket)
         except OSError as e:
             print('error:', e)
-            s.close()
-            s = None
-            utime.sleep(10)
-
+            machine.reset()
+            if server_socket is not None:
+                server_socket.close()
+            server_socket = None
+        utime.sleep(10)
     print('listening on', ip_addr)
-    return s
 
 def send_http_header_and_body_and_close(cl, header,  body):
     cl.send(header)
@@ -121,13 +121,13 @@ while True:
         
         if wlan is None:
             print('wlan is None')
-            wlan = connect_to_wlan(secret)
-            server_socket = create_socket(server_socket)
+            connect_to_wlan()
+            create_socket()
             utime.sleep(10)
 
         if server_socket is None:
             print('server_socket is None')
-            server_socket = create_socket(server_socket)
+            create_socket()
             utime.sleep(10)
             continue
 
